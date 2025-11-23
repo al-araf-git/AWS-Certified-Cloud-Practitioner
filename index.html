@@ -3,39 +3,89 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AWS CLF Practice — Dark Theme (single-file)</title>
+  <title>AWS CLF Practice — Dark Theme (Modes Added)</title>
+
   <style>
     :root{--bg:#08090b;--card:#0f1720;--muted:#98a0a6;--accent:#6ee7b7;--wrong:#ff6b6b;--right:#7af2b6}
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#050607,#071018);color:#e6eef3;font-family:Inter,system-ui,Arial;padding:18px}
+
+    /* ✅ ADDED: Fill entire screen */
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    /* Background now fully covers the page */
+    body{
+      background:linear-gradient(180deg,#050607,#071018);
+      color:#e6eef3;
+      font-family:Inter,system-ui,Arial;
+      padding:18px;
+    }
+
     .wrap{max-width:980px;margin:0 auto}
     h1{margin:0 0 14px;font-size:20px;color:var(--accent)}
     .card{background:linear-gradient(180deg,var(--card),#07101a);padding:18px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+
     .nav{display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:8px;margin-bottom:14px}
     .nav button{background:#0b1116;border:1px solid rgba(255,255,255,0.03);color:var(--muted);padding:8px;border-radius:8px;cursor:pointer}
     .nav button.correct{background:#134e2a;color:#dff7e6}
     .nav button.wrong{background:#4a0d0d;color:#ffdede}
+
     .qbox{padding:14px;background:rgba(255,255,255,0.02);border-radius:10px}
     .qtitle{font-weight:600;margin-bottom:8px}
     .choices{display:flex;flex-direction:column;gap:8px}
     .choice{display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02);cursor:pointer}
     .choice input{width:18px;height:18px}
+
     .controls{display:flex;gap:8px;justify-content:space-between;margin-top:12px}
     .btn{padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
     .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
     .btn.primary{background:var(--accent);color:#042018}
-    .result{margin-top:18px;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent)}
+
     .small{font-size:13px;color:var(--muted)}
-    pre{white-space:pre-wrap}
+
+    .correct-border{border:2px solid var(--right)!important}
+    .wrong-border{border:2px solid var(--wrong)!important}
+
+    .note-card {
+      background:#0f1720;
+      padding:16px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.06);
+      cursor:pointer;
+      transition:0.2s;
+    }
+    .note-card:hover {
+      background:#162330;
+      border-color:var(--accent);
+    }
+    .note-title {
+      font-size:16px;
+      font-weight:600;
+      color:var(--accent);
+    }
+
     @media(max-width:640px){.nav{grid-template-columns:repeat(10,36px)}}
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <h1>AWS CLF Practice — Dark Theme</h1>
-    <div class="card">
-      <div class="nav" id="questionNav" aria-label="Question navigation"></div>
 
+<body>
+<div class="wrap">
+  <h1>AWS CLF Practice — Dark Theme</h1>
+
+  <!-- Mode Tabs -->
+  <div style="display:flex; gap:10px; margin-bottom:18px;">
+    <button class="btn primary" id="tabExam">Exam</button>
+    <button class="btn ghost" id="tabPractice">Practice</button>
+    <button class="btn ghost" id="tabNotes">Notes</button>
+  </div>
+
+  <div class="card">
+
+    <!-- ================= EXAM MODE UI ================= -->
+    <div id="examArea">
+      <div class="nav" id="questionNav"></div>
       <div class="qbox" id="questionContainer"></div>
 
       <div class="controls">
@@ -43,6 +93,7 @@
           <button class="btn ghost" id="prevBtn">Prev</button>
           <button class="btn ghost" id="nextBtn">Next</button>
         </div>
+
         <div style="display:flex;gap:8px">
           <button class="btn ghost" id="restartBtn">Restart &amp; Reshuffle</button>
           <button class="btn primary" id="finishBtn">Finish Exam</button>
@@ -51,10 +102,27 @@
 
       <div id="resultArea"></div>
     </div>
+
+    <!-- ================= PRACTICE MODE UI ================= -->
+    <div id="practiceArea" style="display:none;">
+      <div id="practiceQ" class="qbox"></div>
+
+      <div class="controls" style="justify-content:flex-end;margin-top:14px;">
+        <button class="btn primary" id="practiceSubmitBtn">Submit</button>
+        <button class="btn ghost" id="practiceNextBtn" style="display:none;">Next</button>
+      </div>
+    </div>
+
+    <!-- ================= NOTES UI ================= -->
+    <div id="notesArea" style="display:none;">
+      <div id="notesContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;"></div>
+    </div>
+
   </div>
+</div>
 
 <script>
-// ===== DEFAULT QUESTIONS (you provided these). They use property 'choices' and 'correct' as an array of correct indices =====
+/* ===================== DEFAULT QUESTIONS ===================== */
 const defaultQuestions = [
   {q: "AWS allows users to manage their resources using a web based user interface. What is the name of this interface?", choices:["AWS CLI","AWS API","AWS SDK","AWS Management Console"], correct:[3]},
   
@@ -357,19 +425,18 @@ const defaultQuestions = [
   {q:"How does AWS handle old storage devices?", choices:["Sell them.","Destroy them securely.","Send for remanufacturing.","Store them."], correct:[1]}
 ];
 
-// ===== App state =====
-let selectedAnswers = {}; // qIndex -> number or array
+/* ===================== EXAM MODE LOGIC ===================== */
+let selectedAnswers = {};
 let selectedQuestions = [];
 let order = [];
 let current = 0;
 
-function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a }
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function start(){
-  // pick 50 random questions (or fewer if pool smaller)
   const pool = shuffle(defaultQuestions.slice());
   const take = Math.min(50, pool.length);
-  selectedQuestions = pool.slice(0,take);
+  selectedQuestions = pool.slice(0, take);
   order = selectedQuestions.map((_,i)=>i);
   shuffle(order);
   selectedAnswers = {};
@@ -380,113 +447,213 @@ function start(){
 }
 
 function renderNav(){
-  const nav = document.getElementById('questionNav'); nav.innerHTML='';
+  const nav = document.getElementById('questionNav');
+  nav.innerHTML='';
   selectedQuestions.forEach((_,i)=>{
-    const btn = document.createElement('button'); btn.textContent = i+1; btn.dataset.idx = i;
-    btn.addEventListener('click', ()=>{ renderQuestion(i); });
+    const btn=document.createElement('button');
+    btn.textContent=i+1;
+    btn.dataset.idx=i;
+    btn.addEventListener('click',()=>renderQuestion(i));
     nav.appendChild(btn);
   });
 }
 
 function renderQuestion(displayIndex){
-  current = displayIndex;
-  const q = selectedQuestions[displayIndex];
-  const container = document.getElementById('questionContainer');
-  if(!q){ container.innerHTML = '<div class="small">Question not found.</div>'; return; }
+  current=displayIndex;
+  const q=selectedQuestions[displayIndex];
+  const container=document.getElementById('questionContainer');
+  if(!q){container.innerHTML="<div>Not found</div>";return;}
 
-  const multi = (Array.isArray(q.correct) && q.correct.length>1);
-  let html = `<div class="qtitle">Q${displayIndex+1}. ${escapeHtml(q.q)}</div>`;
-  html += `<div class="small">${multi? 'Select all that apply':'Single answer — select one'}</div>`;
-  html += '<div class="choices">';
+  const multi=(q.correct.length>1);
+  let html=`<div class="qtitle">Q${displayIndex+1}. ${escapeHtml(q.q)}</div>`;
+  html+=`<div class="small">${multi?"Select all that apply":"Select one"}</div>`;
+  html+=`<div class="choices">`;
 
-  q.choices.forEach((choice, idx)=>{
-    const checked = (()=>{
-      const sa = selectedAnswers[displayIndex];
-      if(sa===undefined) return '';
-      if(Array.isArray(sa)) return sa.includes(idx) ? 'checked' : '';
-      return sa===idx ? 'checked' : '';
-    })();
+  q.choices.forEach((choice,idx)=>{
+    const checked = selectedAnswers[displayIndex] === idx ||
+      (Array.isArray(selectedAnswers[displayIndex]) && selectedAnswers[displayIndex].includes(idx))
+      ? "checked" : "";
 
-    if(multi){
-      html += `<label class="choice"><input type="checkbox" data-idx="${idx}" ${checked}> <span>${escapeHtml(choice)}</span></label>`;
-    } else {
-      html += `<label class="choice"><input type="radio" name="r${displayIndex}" data-idx="${idx}" ${checked}> <span>${escapeHtml(choice)}</span></label>`;
-    }
+    html+=`
+      <label class="choice">
+        <input type="${multi?"checkbox":"radio"}" name="r${displayIndex}" data-idx="${idx}" ${checked}>
+        <span>${escapeHtml(choice)}</span>
+      </label>`;
   });
 
-  html += '</div>';
-  container.innerHTML = html;
+  html+=`</div>`;
+  container.innerHTML=html;
 
-  // attach listeners
-  container.querySelectorAll('input').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const idx = parseInt(inp.getAttribute('data-idx'));
+  container.querySelectorAll("input").forEach(inp=>{
+    inp.addEventListener("change",()=>{
+      const idx=parseInt(inp.dataset.idx);
       if(multi){
-        const checkedEls = Array.from(container.querySelectorAll('input:checked'));
-        selectedAnswers[displayIndex] = checkedEls.map(e=>parseInt(e.getAttribute('data-idx')));
+        const selected=Array.from(container.querySelectorAll("input:checked")).map(e=>parseInt(e.dataset.idx));
+        selectedAnswers[displayIndex]=selected;
       } else {
-        selectedAnswers[displayIndex] = idx;
+        selectedAnswers[displayIndex]=idx;
       }
-      // mark nav as answered/unanswered visually (we'll color after grading)
     });
   });
 }
 
-function arraysEqual(a,b){ if(!a) a=[]; if(!b) b=[]; if(a.length!==b.length) return false; const aa=[...a].sort(); const bb=[...b].sort(); return aa.every((v,i)=>v===bb[i]); }
-
-function finishExam(){
-  const resultArea = document.getElementById('resultArea');
-  const navButtons = Array.from(document.getElementById('questionNav').children);
-  let correctCount = 0;
-  let out = '<div class="result"><strong>Review</strong>';
-
-  selectedQuestions.forEach((q, i)=>{
-    const user = selectedAnswers[i];
-    const correct = Array.isArray(q.correct)? q.correct : [q.correct];
-
-    let ok = false;
-    if(correct.length===1){ ok = (user !== undefined) && (user === correct[0]); }
-    else { ok = Array.isArray(user) && arraysEqual(user, correct); }
-
-    if(ok) { correctCount++; navButtons[i].classList.add('correct'); }
-    else { navButtons[i].classList.add('wrong'); }
-
-    out += `<div style="margin-top:10px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)">`;
-    out += `<div style="font-weight:600">Q${i+1}. ${escapeHtml(q.q)}</div>`;
-
-    out += '<div class="small" style="margin-top:6px">Your Answer: ';
-    if(user===undefined) out += '<em>Not answered</em>';
-    else if(Array.isArray(user)){
-      out += user.map(u=>`<div style="display:inline-block;margin-right:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02)">${escapeHtml(q.choices[u])}</div>`).join('');
-    } else {
-      out += `<div style="display:inline-block;margin-right:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02)">${escapeHtml(q.choices[user])}</div>`;
-    }
-    out += '</div>';
-
-    out += '<div class="small" style="margin-top:6px">Correct Answer(s): ';
-    out += correct.map(c=>`<div style="display:inline-block;margin-right:8px;padding:6px;border-radius:6px;background:rgba(255,255,255,0.02)">${escapeHtml(q.choices[c])}</div>`).join('');
-    out += '</div>';
-
-    out += `</div>`;
-  });
-
-  out += `<div style="margin-top:12px;font-weight:700">Score: ${correctCount} / ${selectedQuestions.length} (${Math.round((correctCount/selectedQuestions.length)*100)}%)</div>`;
-  out += '</div>';
-
-  resultArea.innerHTML = out;
-  resultArea.scrollIntoView({behavior:'smooth'});
+function arraysEqual(a,b){
+  if(!a)a=[]; if(!b)b=[];
+  if(a.length!==b.length) return false;
+  a=[...a].sort(); b=[...b].sort();
+  return a.every((v,i)=>v===b[i]);
 }
 
-// Controls
-document.getElementById('prevBtn').addEventListener('click', ()=>{ if(current>0) renderQuestion(current-1); });
-document.getElementById('nextBtn').addEventListener('click', ()=>{ if(current < selectedQuestions.length-1) renderQuestion(current+1); });
-document.getElementById('restartBtn').addEventListener('click', ()=>{ if(confirm('Restart and reshuffle questions?')) start(); });
-document.getElementById('finishBtn').addEventListener('click', ()=>{ if(confirm('Finish exam now? You will see results.')) finishExam(); });
+function finishExam(){
+  const resultArea=document.getElementById('resultArea');
+  const navButtons=[...document.getElementById('questionNav').children];
+  let correctCount=0;
+  let out='<div class="result"><strong>Review</strong>';
 
-function escapeHtml(s){ if(s===undefined||s===null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  selectedQuestions.forEach((q,i)=>{
+    const user=selectedAnswers[i];
+    const correct=q.correct;
 
-// init
+    let ok=false;
+    if(correct.length===1){ok=user===correct[0]}
+    else ok=Array.isArray(user) && arraysEqual(user,correct);
+
+    if(ok){correctCount++;navButtons[i].classList.add("correct")}
+    else navButtons[i].classList.add("wrong");
+
+    out+=`<div style="margin-top:10px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)">
+            <div><b>Q${i+1}.</b> ${escapeHtml(q.q)}</div>
+            <div class="small">Your Answer: ${user===undefined?"<em>Not answered</em>":renderAnswers(q,user)}</div>
+            <div class="small">Correct Answer: ${correct.map(c=>escapeHtml(q.choices[c])).join(", ")}</div>
+          </div>`;
+  });
+
+  out+=`<div style="margin-top:12px;font-weight:700">Score: ${correctCount}/${selectedQuestions.length}</div>`;
+  out+='</div>';
+
+  resultArea.innerHTML=out;
+  resultArea.scrollIntoView({behavior:"smooth"});
+}
+
+function renderAnswers(q,user){
+  if(Array.isArray(user)) return user.map(u=>escapeHtml(q.choices[u])).join(", ");
+  return escapeHtml(q.choices[user]);
+}
+
+document.getElementById('prevBtn').addEventListener('click',()=>{if(current>0)renderQuestion(current-1)});
+document.getElementById('nextBtn').addEventListener('click',()=>{if(current<selectedQuestions.length-1)renderQuestion(current+1)});
+document.getElementById('restartBtn').addEventListener('click',()=>{if(confirm("Restart?"))start()});
+document.getElementById('finishBtn').addEventListener('click',()=>{if(confirm("Finish exam?"))finishExam()});
+
+function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+/* ===================== PRACTICE MODE ===================== */
+let practiceQuestion=null;
+
+function loadPracticeQuestion(){
+  practiceQuestion = defaultQuestions[Math.floor(Math.random()*defaultQuestions.length)];
+  const qbox=document.getElementById("practiceQ");
+  const multi=practiceQuestion.correct.length>1;
+
+  let html=`<div class="qtitle">${escapeHtml(practiceQuestion.q)}</div>`;
+  html+=`<div class="small">${multi?"Select all that apply":"Select one option"}</div>`;
+  html+=`<div class="choices">`;
+
+  practiceQuestion.choices.forEach((c,i)=>{
+    html+=`
+      <label class="choice" data-choice="${i}">
+        <input type="${multi?"checkbox":"radio"}" name="practice">
+        <span>${escapeHtml(c)}</span>
+      </label>`;
+  });
+
+  html+=`</div>`;
+  qbox.innerHTML=html;
+
+  document.getElementById("practiceSubmitBtn").style.display="";
+  document.getElementById("practiceNextBtn").style.display="none";
+}
+
+document.getElementById("practiceSubmitBtn").addEventListener("click",()=>{
+  const selected=[...document.querySelectorAll("#practiceQ input:checked")].map(el=>parseInt(el.parentElement.dataset.choice));
+  const correct=practiceQuestion.correct;
+
+  document.querySelectorAll("#practiceQ .choice").forEach(choice=>{
+    const idx=parseInt(choice.dataset.choice);
+
+    if(selected.includes(idx)){
+      if(correct.includes(idx)) choice.classList.add("correct-border");
+      else choice.classList.add("wrong-border");
+    }
+    if(correct.includes(idx)) choice.classList.add("correct-border");
+  });
+
+  document.getElementById("practiceSubmitBtn").style.display="none";
+  document.getElementById("practiceNextBtn").style.display="";
+});
+
+document.getElementById("practiceNextBtn").addEventListener("click",loadPracticeQuestion);
+
+/* ===================== NOTES DATA ===================== */
+const notesList = [
+  { title: "[Udemy] AWS Certified Cloud Practitioner By Stéphane Maarek", file: "[Udemy] AWS Certified Cloud Practitioner By Stéphane Maarek.pdf" },
+  { title: "IAM Basics", file: "notes/iam.pdf" },
+  { title: "IAM Basics", file: "notes/iam.pdf" },
+  { title: "VPC Cheat Sheet", file: "notes/vpc.pdf" }
+];
+
+function renderNotes() {
+  const container = document.getElementById("notesContainer");
+  container.innerHTML = "";
+
+  notesList.forEach(note => {
+    const card = document.createElement("div");
+    card.className = "note-card";
+    card.innerHTML = `<div class="note-title">${note.title}</div>`;
+
+    card.addEventListener("click", () => {
+      window.open(note.file, "_blank");
+    });
+
+    container.appendChild(card);
+  });
+}
+
+/* ===================== MODE SWITCHING ===================== */
+document.getElementById("tabExam").addEventListener("click",()=>{
+  show("examArea");
+  setTabActive("tabExam");
+});
+document.getElementById("tabPractice").addEventListener("click",()=>{
+  show("practiceArea");
+  setTabActive("tabPractice");
+  loadPracticeQuestion();
+});
+document.getElementById("tabNotes").addEventListener("click",()=>{
+  show("notesArea");
+  setTabActive("tabNotes");
+  renderNotes();
+});
+
+function show(id){
+  document.getElementById("examArea").style.display="none";
+  document.getElementById("practiceArea").style.display="none";
+  document.getElementById("notesArea").style.display="none";
+  document.getElementById(id).style.display="";
+}
+
+function setTabActive(id){
+  ["tabExam","tabPractice","tabNotes"].forEach(t=>{
+    document.getElementById(t).classList.remove("primary");
+    document.getElementById(t).classList.add("ghost");
+  });
+  document.getElementById(id).classList.remove("ghost");
+  document.getElementById(id).classList.add("primary");
+}
+
+/* INIT */
 start();
 </script>
+
 </body>
 </html>
